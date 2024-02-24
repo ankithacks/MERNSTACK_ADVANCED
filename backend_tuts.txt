@@ -1,0 +1,534 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const PORT = 8000;
+require('dotenv').config();
+const app = express();
+require('./db');
+const User = require('./MODELS/UserSchema');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
+const imageuploadRoutes = require('./CONTROLLERS/imageUploadRoutes');
+
+app.use(bodyParser.json());
+app.use(cors());
+app.use(cookieParser());
+app.use('/imageupload', imageuploadRoutes);
+
+
+
+function authenticateToken(req, res, next) {
+     const token = req.headers.authorization.split(' ')[1];
+
+    // console.log('token', token);
+
+    if (!token){
+        const error = new Error('Token not found');
+        next(error);
+    };
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+         const userid = decoded.id;
+        // console.log('decoded', decoded);
+
+        req.id = userid;
+        next();
+    }
+    catch (err) {
+        // console.log(err);
+        // res.status(500).json({ message: 'Invalid Token' });
+        next(err);
+    }
+
+
+
+}
+
+app.get('/', (req, res) => {
+    res.json({ message: 'The API is working' });
+});
+
+
+// app.post('/register', async (req, res) => {
+//     try {
+//         const { password, email, age, gender, name } = req.body;
+//         const existingUser = await User.findOne({ email });
+
+
+//         if (existingUser) {
+//             return res.status(409).json({ message: 'Email already exists' });
+//         }
+
+
+//         const salt = await bcrypt.genSalt(10);
+//         const hashedPassword = await bcrypt.hash(password, salt);
+//         // console.log('salt',salt);
+//         // console.log('hashedPassword',hashedPassword);
+
+//         const newUser = new User({
+//             name,
+//             password: hashedPassword,
+//             email,
+//             age,
+//             gender
+//         });
+
+
+//         await newUser.save();
+//         res.status(201).json({
+//             message: 'User registered successfully'
+//         });
+//     }
+//     catch (err) {
+//         res.status(500).json({ message: err.message })
+//     }
+// })
+
+// app.post('/login', async (req, res, next) => {
+//     try {
+//         const { email, password } = req.body;
+
+//         const existingUser = await User.findOne({ email });
+
+//         if (!existingUser) {
+//            const error = new Error('User does not exist');
+//             next(error);
+//         }
+
+//         const isPasswordCorrect = await bcrypt.compare(password, existingUser.password);
+
+
+//         if (!isPasswordCorrect) {
+//             return res.status(401).json({ message: 'Invalid credentials' });
+//         }
+
+
+//         const accesstoken = jwt.sign({ id: existingUser._id }, process.env.JWT_SECRET_KEY, {
+//             expiresIn: '1hr'
+//         });
+
+//         const refreshToken = jwt.sign({ id: existingUser._id }, process.env.JWT_REFRESH_SECRET_KEY);
+//         existingUser.refreshToken = refreshToken;
+//         await existingUser.save();
+//         res.cookie('refreshToken', refreshToken , { httpOnly: true , path: '/refresh_token'})
+
+//         res.status(200).json({
+//             accesstoken,
+//             refreshToken,
+//             message: 'User logged in successfully'
+//         });
+//     }
+//     catch (err) {
+//         next(err);
+//     }
+// })
+
+// app.get('/getmyprofile', authenticateToken, async (req, res) => {
+//     const id = req.id;
+//     const user = await User.findById(id);
+//     user.password = undefined;
+//     res.status(200).json({ user });
+// })
+
+
+// app.get('/refresh_token', async (req, res, next) => {
+//    const token = req.cookies.refreshToken;
+// //    res.send(token);
+
+//     if (!token) {
+//         const error = new Error('Token not found');
+//         next(error);
+//     }
+
+//    jwt.verify(token , process.env.JWT_REFRESH_SECRET_KEY , async (err , decoded) =>{
+//        if(err){
+//               const error = new Error('Invalid Token');
+//               next(error);
+//        }
+
+
+//        const id = decoded.id;
+//        const existingUser = await User.findById(id);
+
+//          if(!existingUser || token !== existingUser.refreshToken){
+//                 const error = new Error('Invalid Token');
+//                 next(error);
+//          }
+
+
+//          const accesstoken = jwt.sign({ id: existingUser._id }, process.env.JWT_SECRET_KEY, {
+//             expiresIn: '1hr'
+//          });
+
+//             const refreshToken = jwt.sign({ id: existingUser._id }, process.env.JWT_REFRESH_SECRET_KEY);
+
+//             existingUser.refreshToken = refreshToken;
+//             await existingUser.save();
+//             res.cookie('refreshToken', refreshToken , { httpOnly: true , path: '/refresh_token'})
+
+//             res.status(200).json({
+//                 accesstoken,
+//                 refreshToken,
+//                 message : 'Token refreshed successfully'
+//             });
+//    })
+
+// });
+
+
+
+
+// getbygender
+app.post('/getbygender', async (req, res) => {
+    const {gender} = req.body;
+
+    const users = await User.find({gender : gender })
+    res.status(200).json({ users });
+});
+
+
+app.post('/sortusers', async (req, res) => {
+    const {sortby , order} = req.body;
+
+   const sort = {
+         [sortby] : order
+   }
+
+   console.log(sort);
+
+   const users = await User.find().sort(sort);
+
+//    res.send('ok')
+    res.status(200).json({ users });
+});
+
+
+
+// ERROR HANDLING MIDDLEWARE
+app.use((err , req, res , next) => {
+    console.log('error middleware called ', err);
+    res.status(500).json({ message: err.message });
+})
+
+
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
+
+
+.env:-
+MONGO_URL = mongodb+srv://hj123:hj123@cluster0.7febsnn.mongodb.net/
+JWT_SECRET_KEY = hj123
+JWT_REFRESH_SECRET_KEY = hj123
+DB_NAME = mydb1
+
+
+CLOUDINARY_CLOUD_NAME = dy4laycuf
+CLOUDINARY_API_KEY = 561579119923886
+CLOUDINARY_API_SECRET = uW9Qb1FZ6zUtAqZf6ibq5xQ1KDA
+
+
+db.js:-
+const mongoose = require('mongoose');
+require('dotenv').config();
+
+
+mongoose.connect(process.env.MONGO_URL,{
+    dbName : process.env.DB_NAME,
+}).then(
+    () => {
+        console.log('Connected to database');
+    }
+).catch((err) => {
+    console.log('Error connecting to database ' + err);
+})
+
+
+MODELS/UserSchema.js:-const mongoose = require('mongoose');
+
+const userSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true,
+    },
+    password:{
+        type: String,
+        required: true,
+    },
+    email:{
+        type: String,
+        required: true,
+    },
+    age:{
+        type: Number,
+    },
+    gender:{
+        type: String,
+    },
+    refreshToken:{
+        type: String,
+    },
+    profilePic:{
+        type: String,
+    }
+});
+
+module.exports = mongoose.model('User', userSchema);
+
+
+CONTROLLERS/imageUploadRoutes.js:-
+const express = require('express');
+const router = express.Router();
+require('dotenv').config();
+const cloudinary = require('cloudinary').v2;
+const multer = require('multer');
+const User = require('../MODELS/UserSchema');
+
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret : process.env.CLOUDINARY_API_SECRET
+});
+
+const storge = multer.memoryStorage();
+const upload = multer({ storage: storge });
+
+router.post('/uploadprofilepic', upload.single('myimage'), async (req, res) => {
+    const file = req.file;
+  const { userid } = req.body;
+  if (!file) {
+    return res.status(400).json({ error: 'No image file provided' });
+  }
+  const existingUser = await User.findById(userid);
+  if(!existingUser){
+    return res.status(400).json({ error: 'No user found' });
+  }
+
+
+  cloudinary.uploader.upload_stream({resource_type :'auto'}, async (error , result) =>{
+    // res.send(result);
+    if (error) {
+        console.error('Cloudinary Upload Error:', error);
+        return res.status(500).json({ error: 'Error uploading image to Cloudinary' });
+      }
+
+        existingUser.profilePic = result.secure_url;
+
+        await existingUser.save();
+    res.json({ imageUrl: result.url  , message: 'Profile picture uploaded successfully'});
+
+
+  }).end(file.buffer)
+
+});
+
+
+module.exports = router;
+
+//package.json:-
+{
+  "name": "myproj4",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.2",
+    "cloudinary": "^1.39.0",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.1",
+    "mongodb": "^5.7.0",
+    "mongoose": "^7.4.0",
+    "multer": "^1.4.5-lts.1"
+  }
+}
+
+
+
+
+//wrote this index.js file :-
+/** npm init -y --> npm i body-parser nodemon cors mongoose express dotenv bcrypt jsonwebtokens
+.env-> MONGO_URL= {paste the mongo url}
+       JWT_SECRET_KEY=ankit
+		JWT_REFRESH_KEY=12345ankit
+
+
+db.js:-
+const mongoose=require('mongoose')
+require('dotenv').config();
+
+mongoose.connect(process.env.MONGO_URL).then(()=>{ clg('connected to db')}).
+catch((err)=>{clg('error'), error}) */
+
+const express=require('express')
+const bodyparser=require('body-parser')
+const cors=require('cors')
+const PORT=8000
+require('dotenv').config()
+const app=express()
+require('./db.js')
+//CREATE THE SCHEMA INSIDE MODELS FOLDER AND THEN UserSchema.js
+const User=require('./models/UserSchema.js')
+const bcrypt=require('bcrypt')
+const jwt=require('jsonwebtoken')
+const cookieparser=require('cookie-parser')
+
+app.use(bodyparser.json())
+app.use(cors())
+app.use(cookieparser())
+
+
+//function to verify the token stored in localstorage
+function authenticateToken(req,res,next){
+	const token=req.headers.authorization.split('')[1];
+	const {id}=req.body 
+	// clg(token)
+	if(!token) {
+        // return res.status(401).json({mesage:"Auth Errr"})
+        const error=new Error('Token not found')
+        next(error)
+    }
+        //if token exists:-
+	try{
+		const decoded=jwt.verify(token, process.env.JWT_SECRET_KEY);
+		// id=decoded.id;
+		// next() 
+        // Or:-
+        if(id && decoded.id !== id){
+            // return res.status(401).json({message:"auth error"})
+            const error=new Error('invalid token')
+            next(error)
+        }
+        req.id=decoded
+	    // req.user=decoded
+	    next()	
+	}
+	catch(err){
+		res.status(500).json({message:"invalid token"})
+	}
+}
+
+app.get('/',(req,res)=>{
+	clg('API WORKS') })
+
+app.post('/register',async(req,res)=>{
+	try{
+		const {email, name, password, phone}=req.body
+		const existigUser=await User.findOne({email})
+		//if user exists then:-
+		if(existingUser){
+			return res.status(404).json({message:"user already exists"})
+		}
+		//if the user is new then save it in db:-
+		const salt=bcrypt.gensalt(10)
+		const hashed=await bcrypt.hash(password, salt)
+		const newUser=new User({
+			name, email,password: hashed, phone	
+		})
+		await newUser.save()
+		res.status(200).json("new user created")
+		
+}catch(err){clg(error)}
+})
+
+app.post('/login',async(req,res, next)=>{
+	try{
+		const {email, password}=req.body
+		const existingUser=await User.findOne({email})
+		//if user exists then:-
+		if(!existingUser){
+			return res.status(404).json({message:"invalid credits"})
+		}
+		
+		const isPasswordvalid=await bcrypt.compare(password, existingUser.password)
+		
+		if(!isPasswordvalid){
+			return res.status(404).json({message:"invalid credits"})
+		}
+		
+        // access token:-
+		const accesstoken=jwt.sign({id : existingUser._id}, process.env.JWT_SECRET_KEY,{expiresIn:"1h"});
+        // refresh token:- in UserSchema inside the models after phone we say:- refreshToken:{type:String}
+        const refreshToken=jwt.sign({id : existingUser._id}, process.env.JWT_REFRESH_KEY,{expiresIn:"1h"});
+
+        existingUser.refreshToken=refreshToken;
+        await existingUser.save();
+        // now secind part is storeing the refresh token in the cookie part of frontend
+
+        res.cookie('refreshToken', refreshToken, {httpOnly:true , path:'/refresh_token'})
+		res.status(200).json({ accesstoken, refreshToken, message:"done with logged in"})
+		
+}catch(err){clg(error)}
+})
+
+app.get('/getmyprofile',authenticateToken,async(req,res)=>{
+	const {id}=req.body
+	const user=await User.findById(id)
+	//in order to hide the pasword:- we do user.password=undefined
+	res.status(200).json({user})		
+})
+//copy the _id from mongodb database and in the api:-http://localhost:8000/getmyprofile
+// we do it as in the body section:-{"id" :"paste the id here"} and in headers in postman
+// under Key we say Authorization and in Value we say Bearer<space> and paste the token that we got from login
+// as well we provide content-type:application/json
+
+// error handling middleware:-
+app.use((err,next,req,res)=>{
+    console.log('error middleware called', err)
+    res.status(500).json({message: err.mesage})
+})
+
+app.get('/refresh_token', async(req,res, next)=>{
+    // npm i cookie-parser
+    const token=req.cookies.refreshToken
+
+    if(!token){
+        const error=new Error("Token not found");
+        next(error)
+    }
+    jwt.verify(token, process.env.JWT_REFRESH_KEY, async(err, decoded)=>{
+        if(err){
+            const error=new Error('invalid token')
+            next(error)
+        }
+
+        const id=decoded.id
+        const existigUser=await User.findById(id)
+
+        if(!existigUser || token == existigUser.refreshToken){
+            const error=new Error('invalid token')
+            next(error)
+        }
+
+        const accesstoken=jwt.sign({id:existigUser._id}, process.env.JWT_SECRET_KEY, {
+            expiresIn:'1h'
+        })
+
+        const refreshToken=jwt.sign({id : existingUser._id}, process.env.JWT_REFRESH_KEY,{expiresIn:"1h"});
+
+        existigUser.refreshToken=refreshToken;
+        await existigUser.save();
+        res.cookie('refreshToken', refreshToken, {httpOnly:true , path:'/refresh_token'})
+        res.status(200).json({
+            accesstoken, refreshToken, 
+            message: 'token refresh successfull'
+        })
+    })
+})
+
+
+app.listen(PORT, ()=>{
+	clg('listening');
+})
+// always hit checklogin api from frontend when you want to check tokens….. if checklogin returns false that means both tokens expired so redirect the user to login
