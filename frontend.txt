@@ -1,0 +1,266 @@
+for the file :-
+1 => main folder/razorpay/frontend:-
+index.html:-<body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+   
+  </body>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+PaymentSuccess.jsx:-
+import { Box, Heading, Text, VStack } from '@chakra-ui/react'
+import React from 'react'
+import { useSearchParams } from "react-router-dom"
+const PaymentSuccess = () => {
+    const seachQuery = useSearchParams()[0]
+    const referenceNum = seachQuery.get("reference")
+    return (
+        <Box>
+            <VStack h="100vh" justifyContent={"center"}>
+                <Heading textTransform={"uppercase"}> Order Successfull</Heading>
+                <Text>
+                    Reference No.{referenceNum}
+                </Text>
+            </VStack>
+        </Box>
+)}
+export default PaymentSuccess
+
+Home.jsx:-
+import React from 'react'
+import { Box, Stack } from '@chakra-ui/react'
+import Card from './Card'
+import axios from 'axios'
+const Home = () => {
+  const checkoutHandler = async (amount) => {
+    try {
+      const { data: { key } } = await axios.get("http://www.localhost:4000/api/getkey")
+      const { data:{order} } = await axios.post("http://localhost:4000/api/checkout", {
+        amount
+      })
+      const options = {
+        key,
+        amount: order.amount,
+        currency: "INR",
+        name: "Ankit chakraborty",
+        description: "Tutorial of RazorPay",
+        image: "https://avatars.githubusercontent.com/u/25058652?v=4",
+        order_id: order.id,
+        callback_url: "http://localhost:4000/api/paymentVerification",
+        prefill: {
+            name: "Gaurav Kumar",
+            email: "gaurav.kumar@example.com",
+            contact: "9999999999"
+        },
+        notes: {
+            "address": "Razorpay Corporate Office"
+        },
+        theme: {
+            "color": "#121212"
+        }
+    };
+    const razor = new window.Razorpay(options);
+    razor.open();
+      // // console.log(window)  //this will print the razorpay in console under the hood of windows object prototype
+      // console.log(data)
+    } catch (error) {
+      console.error("Error in checkoutHandler:", error.message)
+      // Handle the error as needed, e.g., show an error message to the user
+}}
+  return (
+    <Box>
+      <Stack h={'100vh'} alignItems={'center'} justifyContent={'center'} direction={'row'}>
+        <Card amount={5000} img={'https://cdn.shopify.com/static/sample-images/garnished.jpeg?500x500'} checkoutHandler={() => checkoutHandler(5000)} />
+        <Card amount={5000} img={'https://cdn.shopify.com/static/sample-images/garnished.jpeg?500x500'} checkoutHandler={() => checkoutHandler(5000)} />
+      </Stack>
+    </Box>
+)}
+export default Home
+
+
+Card.jsx:-
+import { VStack, Image, Text, Button } from '@chakra-ui/react'
+import React from 'react'
+const Card = ({amount, img, checkoutHandler}) => {
+  return (
+    <VStack>
+        <Image src={img} boxSize={64} objectFit={"cover"}/>
+        <Text>
+            {amount}
+        </Text>
+        <Button onClick={()=>checkoutHandler(amount)}>Buy Now</Button>
+    </VStack>
+   )
+}
+export default Card
+
+App.js:-
+import {BrowserRouter as Router, Route, Routes} from 'react-router-dom'
+import Home from './Home';
+import PaymentSuccess from './PaymentSuccess';
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path='/' element={<Home/>}/>
+        <Route path='/paymentsuccess' element={<PaymentSuccess/>}/>
+      </Routes>
+    </Router>
+  );
+}
+export default App;
+
+--------------------------------------------------------------------------------------------------
+
+2 ==> main folder/cloudinary/client/src:-
+/components:-
+1-> 
+Header.js:-
+import React from "react";
+import Container from "react-bootstrap/Container";
+import Navbar from "react-bootstrap/Navbar";
+import { NavLink } from "react-router-dom";
+const Header = () => {
+  return (
+    <>
+      <Navbar expand="lg" style={{height: "60px"}} bg="dark" variant="dark">
+        <Container>
+          <NavLink to="/" className="text-decoration-none text-light">Home</NavLink>
+          
+        </Container>
+      </Navbar>
+    </>
+  );
+};
+export default Header;
+
+
+Home.js:-
+import React, { useEffect, useState } from 'react'
+import Button from 'react-bootstrap/Button';
+import Card from 'react-bootstrap/Card';
+import { NavLink } from 'react-router-dom';
+import axios from 'axios';
+import moment from "moment"
+const Home = () => {
+    const [data,setData] = useState([]);
+    console.log(data)
+    const getUserData = async()=>{
+        const res = await axios.get("http://localhost:4004/getdata",{
+            headers:{
+                "Content-Type":"application/json"
+            }
+        });
+        if(res.status === 200){
+            setData(res.data)
+        }else{
+            alert("error")
+        }
+    }
+    useEffect(()=>{
+        getUserData()
+    },[])
+    return (
+        <>
+            <div className="container mt-2">
+                <h1>MERN IMAGE upload</h1>
+                <div className="text-end">  
+                <Button variant="primary" >
+                    <NavLink to="/register" className="text-decoration-none text-light">Add User</NavLink>
+                </Button>
+                </div>
+                <div className="row d-flex justify-content-between align-iteams-center mt-5">
+                {
+                    data.length > 0 && data.map((element,index)=>{
+                        return (
+                            <>
+                            <Card style={{ width: '22rem',height:"18rem" }} className='mb-3'>
+                        <Card.Img variant="top" src={element.imgpath} style={{width:"100px",textAlign:"center",margin:"auto"}}
+                        className='mt-2'
+                         />
+                        <Card.Body>
+                            <Card.Title>User Name: {element.name}</Card.Title>
+                            <Card.Text>
+                                Date Added : {moment(element.date).format("L")}
+                            </Card.Text>
+                            <Button variant="danger" className='col-lg-6 text-center'>Delete</Button>
+                        </Card.Body>
+                    </Card>
+                            </>
+                        )
+                    })
+                }
+                   
+                </div>
+            </div>
+        </>)}
+export default Home
+
+
+Register.js:-
+import React, { useState } from 'react'
+import Button from 'react-bootstrap/Button';
+import Form from 'react-bootstrap/Form';
+import axios from "axios"
+import {useNavigate} from "react-router-dom"
+const Register = () => {
+    const [name,setName] = useState("");
+    const [file,setFile] = useState("");
+    const navigate = useNavigate();
+    const addUserData = async(e)=>{
+        e.preventDefault();
+        const formData = new FormData();
+        formData.append("photo",file);
+        formData.append("name",name);
+        const config = {
+            headers:{
+                "Content-Type":"multipart/form-data"
+            }
+        }
+        const res = await axios.post("http://localhost:4004/register",formData,config);
+        if(res.status === 200){
+            navigate("/")
+        }else{
+            alert("error")
+        }
+    }
+    return (
+        <>
+            <div className='container mt-3'>
+                <h1>Upload your Img Here</h1>
+                <Form>
+                    <Form.Group className="mb-3" controlId="formBasicEmail">
+                        <Form.Label>Name</Form.Label>
+                        <Form.Control type="text" value={name} onChange={(e)=>setName(e.target.value)}/>
+                    </Form.Group>
+                    <Form.Group className="mb-3" >
+                        <Form.Label>Email address</Form.Label>
+                        <Form.Control type="file" onChange={(e)=>setFile(e.target.files[0])} />
+                    </Form.Group>
+                     <Button variant="primary" type="submit" onClick={addUserData}>
+                        Submit
+                    </Button>
+                </Form>
+            </div>
+        </>)}
+export default Register
+
+
+App.js:-
+import './App.css';
+import Header from './components/Header';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import Home from './components/Home';
+import {Routes,Route} from "react-router-dom"
+import Register from './components/Register';
+function App() {
+  return (
+<>
+  <Header />
+  <Routes>
+    <Route path='/' element={<Home />} />
+    <Route path='/register' element={<Register />} />
+  </Routes>
+</>
+);}
+export default App;
